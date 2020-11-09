@@ -60,8 +60,9 @@ def send_mail_invitation(
 
 class ElectionCreateAPIView(CreateAPIView):
     serializer_class = serializers.ElectionCreateSerializer
-
+    
     def create(self, request: Request, *args, **kwargs) -> Response:
+        ts = time()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -74,11 +75,14 @@ class ElectionCreateAPIView(CreateAPIView):
             send_mail_invitation(email, election, token.id)
 
         headers = self.get_success_headers(serializer.data)
+        te = time()
+        print("prend : %2.4f s pour l'envoie de %d mails" %((te-ts),len(electors_emails)))
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED,
             headers=headers
         )
+    
 
 
 class ElectionDetailsAPIView(RetrieveAPIView):
