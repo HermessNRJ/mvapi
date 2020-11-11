@@ -1,4 +1,4 @@
-import os
+import os,requests
 from typing import Optional, Dict, Tuple, List
 from time import time
 from django.db import IntegrityError
@@ -32,31 +32,39 @@ SEND_MAIL_ERROR = "E10: Error sending email"
 Grade = int 
 
 def send_mail_invitation(
-        email: str, election: str, token_id: int
-    ):   
+    email: str, election: str, token_id: int
+    ):
+    """
+    Def to send only the election invitation
+    """
     token_get: str = f"?token={token_id}"
     merge_data: Dict[str, str] = {
         "invitation_url": f"{settings.SITE_URL}/vote/{election.id}{token_get}",
         "result_url": f"{settings.SITE_URL}/result/{election.id}",
         "title": election.title,
     }
-
+    
     if election.select_language not in settings.LANGUAGE_AVAILABLE:
         activate(settings.DEFAULT_LANGUAGE)
     else:
         activate(election.select_language)
 
     text_body = render_to_string("election/mail_invitation.txt", merge_data)
-    html_body = render_to_string("election/mail_invitation.html", merge_data)   
+    html_body = render_to_string("election/mail_invitation.html", merge_data)
 
-    msg = EmailMultiAlternatives(
-        f"[{gettext('Mieux Voter')}] {election.title}",
-        text_body,
-        settings.EMAIL_HOST_USER,
-        [email])
-    msg.attach_alternative(html_body, "text/html")
-    msg.send()
-
+    return requests.post(
+        "https://api.eu.mailgun.net/v3/" + settings.EMAIL_API_DOMAIN + "/messages",
+        auth=("api", settings.EMAIL_API_KEY),
+        data={"from": "Mieux Voter <" + settings.DEFAULT_FROM_EMAIL + ">",
+              "to": email,
+              "subject": f"[{gettext('Mieux Voter')}] {election.title}",
+              "text": text_body,
+              "html": html_body,
+              "o:tracking": False,
+              "o:tag":"Invitation",
+              "o:require-tls": settings.EMAIL_USE_TLS,
+              "o:skip-verification": settings.EMAIL_SKIP_VERIFICATION}
+        )
 
 class ElectionCreateAPIView(CreateAPIView):
     serializer_class = serializers.ElectionCreateSerializer
