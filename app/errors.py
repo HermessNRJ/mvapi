@@ -99,3 +99,8 @@ class ElectionIsActiveError(CustomError):
     error_code = "ELECTION_IS_ACTIVE"
     message = "This election is already active and cannot be modified."
 
+class VoteModificationForbiddenError(CustomError):
+    status_code = 403
+    error_code = "VOTE_MODIFICATION_FORBIDDEN"
+    message = "Modification of votes is not allowed in this election."
+
