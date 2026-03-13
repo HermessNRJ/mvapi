@@ -77,6 +77,7 @@ class RandomElection(t.TypedDict):
     date_end: t.Optional[str]
     date_start: t.Optional[str]
     auth_for_result: bool
+    description: t.Optional[str]
 
 
 def _random_election(num_candidates: int, num_grades: int) -> RandomElection:
@@ -98,6 +99,7 @@ def _random_election(num_candidates: int, num_grades: int) -> RandomElection:
         "num_voters": 0,
         "date_end": None,
         "auth_for_result": False,
+        "description": None,
     }
 
 
