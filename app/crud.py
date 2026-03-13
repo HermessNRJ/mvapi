@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import random
 import string
 from collections import defaultdict
@@ -531,6 +532,15 @@ def update_ballot(
     _check_election_is_started(db_election)
     _check_election_is_not_ended(db_election)
 
+    # Check if modification is allowed
+    modification_allowed = True
+    try:
+        desc_json = json.loads(str(db_election.description))
+        if isinstance(desc_json, dict) and "modificationAllowed" in desc_json:
+            modification_allowed = desc_json["modificationAllowed"]
+    except (json.JSONDecodeError, TypeError, ValueError):
+        pass
+
     if len(ballot.votes) != len(vote_ids):
         raise errors.ForbiddenError("Edit all votes at once.")
 
@@ -552,6 +562,13 @@ def update_ballot(
 
     if len(db_votes) != len(vote_ids):
         raise errors.NotFoundError("votes")
+
+    # If modification is NOT allowed, check if this is the first time voting
+    if not modification_allowed:
+        # A ballot is considered "voted" if at least one of its votes already has a grade_id
+        is_already_voted = any(v.grade_id is not None for v in db_votes)
+        if is_already_voted:
+            raise errors.VoteModificationForbiddenError()
 
     # Verify all votes belong to the same ballot
     ballot_ids = {int(v.ballot_id) for v in db_votes if v.ballot_id is not None}
