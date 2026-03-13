@@ -943,3 +943,49 @@ def test_progress():
     assert progress_rep.status_code == 200, progress_data
     assert progress_data["num_voters"] == 10
     assert progress_data["num_voters_voted"] == 1
+
+def test_vote_modification_restriction():
+    """
+    Tests that a vote cannot be modified if the election's modificationAllowed is False.
+    """
+    import json
+    # Create a restricted election with modificationAllowed: False in description
+    body = _random_election(5, 3)
+    body["restricted"] = True
+    body["num_voters"] = 1
+    # Store modificationAllowed in the JSON description
+    body["description"] = json.dumps({
+        "description": "This is a test election",
+        "modificationAllowed": False
+    })
+
+    response = client.post("/elections", json=body)
+    assert response.status_code == 200, response.text
+    election_data = response.json()
+    ballot_token = election_data["invites"][0]
+
+    # Cast initial vote
+    grade_id = election_data["grades"][0]["id"]
+    votes = [
+        {"candidate_id": c["id"], "grade_id": grade_id}
+        for c in election_data["candidates"]
+    ]
+    response = client.put(
+        "/ballots",
+        json={"votes": votes},
+        headers={"Authorization": f"Bearer {ballot_token}"}
+    )
+    assert response.status_code == 200, "Initial vote failed"
+
+    # Try to modify the vote
+    new_grade_id = election_data["grades"][1]["id"]
+    new_votes = [
+        {"candidate_id": c["id"], "grade_id": new_grade_id}
+        for c in election_data["candidates"]
+    ]
+    response = client.put(
+        "/ballots",
+        json={"votes": new_votes},
+        headers={"Authorization": f"Bearer {ballot_token}"}
+    )
+    check_error_response(response, 403, "VOTE_MODIFICATION_FORBIDDEN")
